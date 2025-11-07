@@ -174,7 +174,7 @@
       </div>
 
       <div class="info">
-        💡 <strong>核心概念</strong>：当你提高阈值时，弱连接逐渐消失，强连接自然浮现出清晰的结构（五角星）。
+        💡 <strong>核心概念</strong>：当你提高阈值时，弱连接逐渐消失，强连接自然浮现出清晰的结构（六角星）。
       </div>
 
       <div class="stats">
@@ -184,7 +184,7 @@
         </div>
         <div class="stat-item">
           <div class="stat-label">总连接数</div>
-          <div class="stat-value">45</div>
+          <div class="stat-value">66</div>
         </div>
       </div>
     </div>
@@ -211,7 +211,8 @@
 
       // 权重越高，线条越粗，颜色越深
       const alpha = 0.2 + weight * 0.8;  // 透明度：0.2-1.0
-      const lineWidth = 1 + weight * 4;   // 线宽：1-5
+      // const lineWidth = 1 + weight * 4;   // 线宽：1-5
+      const lineWidth = 3;   // 线宽：1-5
 
       ctx.strokeStyle = `rgba(102, 126, 234, ${alpha})`;
       ctx.lineWidth = lineWidth;
