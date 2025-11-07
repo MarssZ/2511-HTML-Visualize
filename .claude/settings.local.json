@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__mcp-fetcher__fetch_url",
+      "Bash(cp \"Concept - 搞懂大模型这辆车 - 教学大纲.md\" \"Concept - 搞懂大模型这辆车 - 教学大纲.md.bak\")",
+      "Bash(python insert_section.py)",
+      "Bash(cp:*)",
+      "WebSearch",
+      "Bash(python:*)",
+      "Bash(iconv:*)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(if [ -f \"d:\\MarssBrain\\.claude\\commands\\readtier.md\" ])",
+      "Bash(then echo \"exists\")",
+      "Bash(else echo \"not exists\")",
+      "Bash(fi)",
+      "Bash(dir:*)",
+      "mcp__rag-web-browser__search",
+      "Bash(start index.html)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "outputStyle": "linus"
+}
