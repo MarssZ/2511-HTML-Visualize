@@ -17,7 +17,9 @@
       "Bash(fi)",
       "Bash(dir:*)",
       "mcp__rag-web-browser__search",
-      "Bash(start index.html)"
+      "Bash(start index.html)",
+      "Bash(move index.html demosstructure-energy )",
+      "Bash(move data.js demosstructure-energy)"
     ],
     "deny": [],
     "ask": []

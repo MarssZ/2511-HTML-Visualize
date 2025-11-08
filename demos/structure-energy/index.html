@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>结构能：调整权重，显现结构</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .threshold-value {
+      font-weight: bold;
+      color: #667eea;
+      font-size: 18px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 5px;
+      background: #e0e0e0;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #764ba2;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    input[type="range"]::-moz-range-thumb:hover {
+      transform: scale(1.2);
+      background: #764ba2;
+    }
+
+    .info {
+      background: #f0f4ff;
+      border-left: 4px solid #667eea;
+      padding: 12px;
+      border-radius: 5px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 15px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>结构能：调整权重，显现结构</h1>
+    <p class="subtitle">
+      拖动滑块，观察混沌如何变为秩序
+    </p>
+
+    <canvas id="graph" width="500" height="500"></canvas>
+
+    <div class="controls">
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>权重阈值（显示权重 ≥ 阈值的连接）</span>
+          <span class="threshold-value" id="value">0.50</span>
+        </div>
+        <input type="range" id="slider" min="0" max="100" value="50">
+      </div>
+
+      <div class="info">
+        💡 <strong>核心概念</strong>：当你提高阈值时，弱连接逐渐消失，强连接自然浮现出清晰的结构（六角星）。
+      </div>
+
+      <div class="stats">
+        <div class="stat-item">
+          <div class="stat-label">显示的连接数</div>
+          <div class="stat-value" id="edgeCount">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">总连接数</div>
+          <div class="stat-value">66</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    // Canvas 初始化
+    const canvas = document.getElementById('graph');
+    const ctx = canvas.getContext('2d');
+
+    // UI 元素
+    const slider = document.getElementById('slider');
+    const valueDisplay = document.getElementById('value');
+    const edgeCountDisplay = document.getElementById('edgeCount');
+
+    // 当前阈值（0-1之间）
+    let threshold = 0.5;
+
+    // 画线函数：连接两个节点
+    function drawLine(fromId, toId, weight) {
+      const from = GRAPH.nodes.find(n => n.id === fromId);
+      const to = GRAPH.nodes.find(n => n.id === toId);
+
+      // 权重越高，线条越粗，颜色越深
+      const alpha = 0.2 + weight * 0.8;  // 透明度：0.2-1.0
+      // const lineWidth = 1 + weight * 4;   // 线宽：1-5
+      const lineWidth = 3;   // 线宽：1-5
+
+      ctx.strokeStyle = `rgba(102, 126, 234, ${alpha})`;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+
+    // 画节点函数：圆形节点
+    function drawNode(x, y) {
+      // 外圈（白色描边）
+      ctx.fillStyle = '#ff5722';
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // 核心渲染函数：根据阈值过滤并绘制
+    function render(t) {
+      // 清屏
+      ctx.clearRect(0, 0, 500, 500);
+
+      // 过滤出权重 >= 阈值的边
+      const visibleEdges = GRAPH.edges.filter(e => e.weight >= t);
+
+      // 画所有可见的边
+      visibleEdges.forEach(e => drawLine(e.from, e.to, e.weight));
+
+      // 画所有节点（永远显示）
+      GRAPH.nodes.forEach(n => drawNode(n.x, n.y));
+
+      // 更新统计信息
+      edgeCountDisplay.textContent = visibleEdges.length;
+    }
+
+    // 滑块事件：0-100 映射到 0.0-1.0
+    slider.addEventListener('input', function() {
+      threshold = this.value / 100;
+      valueDisplay.textContent = threshold.toFixed(2);
+      render(threshold);
+    });
+
+    // 初始渲染
+    render(threshold);
+  </script>
+</body>
+</html>
