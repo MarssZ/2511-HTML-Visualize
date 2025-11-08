@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAS 分形交互网络：三维认知空间</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1e293b 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      margin: 20px 0 10px;
+      font-size: 2em;
+      text-align: center;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 20px;
+      font-size: 0.95em;
+    }
+    .container {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    #mainCanvas {
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+    }
+    #cubeCanvas {
+      background: rgba(30, 41, 59, 0.3);
+      border-radius: 8px;
+      border: 2px solid rgba(148, 163, 184, 0.2);
+    }
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.9em;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover { transform: scale(1.05); }
+    .btn-secondary {
+      background: rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .btn-secondary:hover { background: rgba(148, 163, 184, 0.3); }
+    .btn-secondary.active {
+      background: rgba(251, 191, 36, 0.3);
+      border-color: #fbbf24;
+      color: #fbbf24;
+    }
+    #info {
+      padding: 20px;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 8px;
+      max-width: 900px;
+      width: 100%;
+    }
+    #info h3 {
+      color: #fbbf24;
+      margin-bottom: 10px;
+      font-size: 1.2em;
+    }
+    #info p {
+      line-height: 1.6;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+    }
+    .hint {
+      display: inline-block;
+      margin: 5px 10px 5px 0;
+      padding: 6px 12px;
+      background: rgba(251, 191, 36, 0.1);
+      border-left: 3px solid #fbbf24;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .dimension-legend {
+      display: inline-block;
+      margin: 10px 15px 10px 0;
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-size: 0.95em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dimension-legend:hover { transform: scale(1.05); }
+    .dim-intra { background: rgba(167, 139, 250, 0.2); border-left: 4px solid #a78bfa; }
+    .dim-cross { background: rgba(251, 113, 133, 0.2); border-left: 4px solid #fb7185; }
+    .dim-level { background: rgba(56, 189, 248, 0.2); border-left: 4px solid #38bdf8; }
+    #currentLevel {
+      text-align: center;
+      color: #fbbf24;
+      font-size: 1.1em;
+      font-weight: 600;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>CAS 分形交互网络</h1>
+  <p class="subtitle">复杂适应系统的三维认知空间 — 任何代理都同时处于三种交互关系中</p>
+
+  <div id="currentLevel"></div>
+
+  <div class="container">
+    <canvas id="mainCanvas" width="700" height="700"></canvas>
+    <canvas id="cubeCanvas" width="200" height="200"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="btnRipple">播放扰动传播</button>
+    <button class="btn btn-secondary active" data-level="0">个人</button>
+    <button class="btn btn-secondary" data-level="1">团队</button>
+    <button class="btn btn-secondary" data-level="2">公司</button>
+    <button class="btn btn-primary" id="btnReset">重置视图</button>
+  </div>
+
+  <div id="info">
+    <h3>核心洞察</h3>
+    <p id="insight"></p>
+    <div id="hints"></div>
+    <div id="legends"></div>
+    <div id="details"></div>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    // === 全局状态 ===
+    const mainCanvas = document.getElementById('mainCanvas');
+    const mainCtx = mainCanvas.getContext('2d');
+    const cubeCanvas = document.getElementById('cubeCanvas');
+    const cubeCtx = cubeCanvas.getContext('2d');
+
+    let currentLevelIndex = 0;  // 当前分形层级（0=个人, 1=团队, 2=公司）
+    let hoveredDimension = null;  // 悬停的维度
+    let ripples = [];  // 扰动波纹数组
+    let cubeRotationY = Math.PI / 4;  // 3D立方体旋转角
+
+    // === 2D主视图渲染 ===
+    function renderMainView() {
+      const centerX = mainCanvas.width / 2;
+      const centerY = mainCanvas.height / 2;
+      const level = CAS_NETWORK.fractalLevels[currentLevelIndex];
+
+      mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+      // 绘制扰动波纹
+      ripples = ripples.filter(r => r.radius < CAS_NETWORK.ripple.maxRadius);
+      ripples.forEach(r => {
+        const dim = CAS_NETWORK.dimensions.find(d => d.id === r.dimension);
+        mainCtx.strokeStyle = CAS_NETWORK.ripple.colors[r.dimension];
+        mainCtx.lineWidth = 3 - (r.radius / CAS_NETWORK.ripple.maxRadius) * 2;
+        mainCtx.globalAlpha = 1 - (r.radius / CAS_NETWORK.ripple.maxRadius);
+        mainCtx.beginPath();
+        mainCtx.arc(centerX, centerY, r.radius, 0, Math.PI * 2);
+        mainCtx.stroke();
+        r.radius += CAS_NETWORK.ripple.speed * 50;
+      });
+      mainCtx.globalAlpha = 1;
+
+      // 绘制三个维度的代理节点
+      CAS_NETWORK.dimensions.forEach(dim => {
+        const agents = level.agents[dim.id];
+        const isHovered = hoveredDimension === dim.id;
+        const opacity = hoveredDimension && !isHovered ? 0.3 : 1;
+
+        mainCtx.globalAlpha = opacity;
+
+        if (dim.id === 'level') {
+          // 跨层级：垂直排列
+          agents.forEach(agent => {
+            const y = agent.position === 'above'
+              ? centerY - dim.verticalOffset - agent.offset
+              : centerY + dim.verticalOffset + agent.offset;
+
+            // 绘制连线
+            mainCtx.strokeStyle = dim.color;
+            mainCtx.lineWidth = isHovered ? 3 : 2;
+            mainCtx.beginPath();
+            mainCtx.moveTo(centerX, centerY);
+            mainCtx.lineTo(centerX, y);
+            mainCtx.stroke();
+
+            // 绘制节点
+            drawNode(centerX, y, agent.label, dim.color, isHovered ? 8 : 6);
+          });
+        } else {
+          // 系统内 / 跨系统：环形排列
+          agents.forEach(agent => {
+            const angle = (agent.angle * Math.PI) / 180;
+            const x = centerX + Math.cos(angle) * dim.radius;
+            const y = centerY + Math.sin(angle) * dim.radius;
+
+            // 绘制连线
+            mainCtx.strokeStyle = dim.color;
+            mainCtx.lineWidth = isHovered ? 3 : 2;
+            mainCtx.beginPath();
+            mainCtx.moveTo(centerX, centerY);
+            mainCtx.lineTo(x, y);
+            mainCtx.stroke();
+
+            // 绘制节点
+            drawNode(x, y, agent.label, dim.color, isHovered ? 8 : 6);
+          });
+        }
+      });
+
+      mainCtx.globalAlpha = 1;
+
+      // 绘制核心代理（最后绘制，确保在最上层）
+      drawNode(centerX, centerY, level.coreAgent.label, '#fbbf24', 12, true);
+    }
+
+    // 绘制节点
+    function drawNode(x, y, label, color, radius, isCore = false) {
+      // 绘制圆形
+      mainCtx.fillStyle = color;
+      mainCtx.beginPath();
+      mainCtx.arc(x, y, radius, 0, Math.PI * 2);
+      mainCtx.fill();
+      mainCtx.strokeStyle = '#fff';
+      mainCtx.lineWidth = isCore ? 3 : 2;
+      mainCtx.stroke();
+
+      // 绘制标签
+      mainCtx.fillStyle = '#fff';
+      mainCtx.font = isCore ? 'bold 14px sans-serif' : '12px sans-serif';
+      mainCtx.textAlign = 'center';
+      mainCtx.fillText(label, x, y - radius - 8);
+    }
+
+    // === 3D辅助视图渲染 ===
+    function renderCubeView() {
+      const centerX = cubeCanvas.width / 2;
+      const centerY = cubeCanvas.height / 2;
+
+      cubeCtx.clearRect(0, 0, cubeCanvas.width, cubeCanvas.height);
+
+      // 3D投影函数（简化版）
+      function project3D(x, y, z) {
+        const cx = x - 0.5, cy = y - 0.5, cz = z - 0.5;
+        const cosY = Math.cos(cubeRotationY);
+        const sinY = Math.sin(cubeRotationY);
+        const x2 = cx * cosY + cz * sinY;
+        const z2 = -cx * sinY + cz * cosY;
+        const scale = 60;
+        return {
+          x: centerX + x2 * scale,
+          y: centerY - cy * scale,
+          z: z2
+        };
+      }
+
+      // 投影所有顶点
+      const vertices = CAS_NETWORK.cube3D.vertices.map(v => project3D(...v));
+
+      // 绘制边
+      CAS_NETWORK.cube3D.edges.forEach(([i, j]) => {
+        const p1 = vertices[i];
+        const p2 = vertices[j];
+        const avgZ = (p1.z + p2.z) / 2;
+
+        cubeCtx.strokeStyle = avgZ < 0 ? '#555' : '#888';
+        cubeCtx.lineWidth = avgZ < 0 ? 1 : 2;
+        cubeCtx.setLineDash(avgZ < 0 ? [3, 3] : []);
+        cubeCtx.beginPath();
+        cubeCtx.moveTo(p1.x, p1.y);
+        cubeCtx.lineTo(p2.x, p2.y);
+        cubeCtx.stroke();
+      });
+      cubeCtx.setLineDash([]);
+
+      // 绘制三个轴（从原点出发）
+      const origin = project3D(0, 0, 0);
+      const dims = [
+        { end: project3D(1.3, 0, 0), color: '#a78bfa', label: 'X' },
+        { end: project3D(0, 1.3, 0), color: '#fb7185', label: 'Y' },
+        { end: project3D(0, 0, 1.3), color: '#38bdf8', label: 'Z' }
+      ];
+
+      dims.forEach((dim, i) => {
+        const isHovered = hoveredDimension === CAS_NETWORK.dimensions[i].id;
+        cubeCtx.strokeStyle = dim.color;
+        cubeCtx.lineWidth = isHovered ? 3 : 2;
+        cubeCtx.beginPath();
+        cubeCtx.moveTo(origin.x, origin.y);
+        cubeCtx.lineTo(dim.end.x, dim.end.y);
+        cubeCtx.stroke();
+
+        // 轴标签
+        cubeCtx.fillStyle = dim.color;
+        cubeCtx.font = 'bold 12px sans-serif';
+        cubeCtx.textAlign = 'center';
+        cubeCtx.fillText(dim.label, dim.end.x, dim.end.y - 5);
+      });
+
+      // 自动旋转
+      cubeRotationY += 0.01;
+    }
+
+    // === 主渲染循环 ===
+    function render() {
+      renderMainView();
+      renderCubeView();
+      requestAnimationFrame(render);
+    }
+
+    // === 交互逻辑 ===
+    mainCanvas.addEventListener('mousemove', (e) => {
+      const rect = mainCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = mainCanvas.width / 2;
+      const centerY = mainCanvas.height / 2;
+      const distance = Math.hypot(x - centerX, y - centerY);
+
+      // 检测悬停在哪个维度
+      let found = null;
+      CAS_NETWORK.dimensions.forEach(dim => {
+        const r1 = dim.id === 'intra' ? 0 : CAS_NETWORK.dimensions[0].radius;
+        const r2 = dim.radius || 0;
+        if (dim.id === 'level') {
+          if (Math.abs(x - centerX) < 30 && Math.abs(y - centerY) > 80) {
+            found = dim.id;
+          }
+        } else {
+          if (distance > r1 - 20 && distance < r2 + 20) {
+            found = dim.id;
+          }
+        }
+      });
+
+      if (found !== hoveredDimension) {
+        hoveredDimension = found;
+        updateDetails(found);
+      }
+    });
+
+    mainCanvas.addEventListener('mouseleave', () => {
+      hoveredDimension = null;
+      updateDetails(null);
+    });
+
+    // 播放扰动传播
+    document.getElementById('btnRipple').addEventListener('click', () => {
+      ripples = [
+        { dimension: 'intra', radius: 0 },
+        { dimension: 'cross', radius: 0 },
+        { dimension: 'level', radius: 0 }
+      ];
+    });
+
+    // 切换分形层级
+    document.querySelectorAll('[data-level]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentLevelIndex = parseInt(btn.dataset.level);
+        document.querySelectorAll('[data-level]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateLevelInfo();
+      });
+    });
+
+    // 重置视图
+    document.getElementById('btnReset').addEventListener('click', () => {
+      currentLevelIndex = 0;
+      hoveredDimension = null;
+      ripples = [];
+      document.querySelectorAll('[data-level]').forEach((b, i) => {
+        b.classList.toggle('active', i === 0);
+      });
+      updateLevelInfo();
+      updateDetails(null);
+    });
+
+    // === UI 更新 ===
+    function updateDetails(dimId) {
+      const detailsDiv = document.getElementById('details');
+      if (!dimId) {
+        detailsDiv.innerHTML = '';
+        return;
+      }
+      const dim = CAS_NETWORK.dimensions.find(d => d.id === dimId);
+      detailsDiv.innerHTML = `
+        <h3 style="color: ${dim.color}; margin-top: 20px;">${dim.name}</h3>
+        <p style="white-space: pre-line; color: #e2e8f0;">${dim.details}</p>
+      `;
+    }
+
+    function updateLevelInfo() {
+      const level = CAS_NETWORK.fractalLevels[currentLevelIndex];
+      document.getElementById('currentLevel').textContent =
+        `当前层级：${level.name} — ${level.description}`;
+    }
+
+    // 初始化UI
+    document.getElementById('insight').textContent = CAS_NETWORK.insight;
+    document.getElementById('hints').innerHTML = CAS_NETWORK.hints.map(h =>
+      `<span class="hint">${h}</span>`
+    ).join('');
+    document.getElementById('legends').innerHTML = CAS_NETWORK.dimensions.map(dim =>
+      `<div class="dimension-legend dim-${dim.id}">
+        <strong>${dim.name}</strong><br>
+        <span style="font-size: 0.85em;">${dim.description}</span>
+      </div>`
+    ).join('');
+    updateLevelInfo();
+
+    // 启动渲染循环
+    render();
+  </script>
+</body>
+</html>
