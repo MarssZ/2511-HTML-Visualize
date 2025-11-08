@@ -206,13 +206,12 @@
 
     // 画线函数：连接两个节点
     function drawLine(fromId, toId, weight) {
-      const from = GRAPH.nodes.find(n => n.id === fromId);
-      const to = GRAPH.nodes.find(n => n.id === toId);
+      const from = window.graphData.nodes.find(n => n.id === fromId);
+      const to = window.graphData.nodes.find(n => n.id === toId);
 
       // 权重越高，线条越粗，颜色越深
       const alpha = 0.2 + weight * 0.8;  // 透明度：0.2-1.0
-      // const lineWidth = 1 + weight * 4;   // 线宽：1-5
-      const lineWidth = 3;   // 线宽：1-5
+      const lineWidth = 3;
 
       ctx.strokeStyle = `rgba(102, 126, 234, ${alpha})`;
       ctx.lineWidth = lineWidth;
@@ -226,7 +225,6 @@
 
     // 画节点函数：圆形节点
     function drawNode(x, y) {
-      // 外圈（白色描边）
       ctx.fillStyle = '#ff5722';
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 3;
@@ -243,13 +241,13 @@
       ctx.clearRect(0, 0, 500, 500);
 
       // 过滤出权重 >= 阈值的边
-      const visibleEdges = GRAPH.edges.filter(e => e.weight >= t);
+      const visibleEdges = window.graphData.edges.filter(e => e.weight >= t);
 
       // 画所有可见的边
       visibleEdges.forEach(e => drawLine(e.from, e.to, e.weight));
 
       // 画所有节点（永远显示）
-      GRAPH.nodes.forEach(n => drawNode(n.x, n.y));
+      window.graphData.nodes.forEach(n => drawNode(n.x, n.y));
 
       // 更新统计信息
       edgeCountDisplay.textContent = visibleEdges.length;
